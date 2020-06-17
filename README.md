@@ -1,6 +1,6 @@
 # HCharaSwitcher
 
-This plugin allows you to load cards for active HScene members.
+This plugin allows you to switch character cards during H scene.
 
 # DO NOT REUPLOAD WITHOUT PERMISSION | 未经许可请勿转载
 
