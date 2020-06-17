@@ -1,11 +1,11 @@
 # HCharaSwitcher
 
-This plugin allows you to switch character cards during H scene.
+This plugin allows you to change character cards during H scene.
 
 # DO NOT REUPLOAD WITHOUT PERMISSION | 未经许可请勿转载
 
 **Features:**
-* Change 1st female character
+* Change cards for female H members.
 * Changes personality, voice, BGM, other data according to the character card
 
 **Usage:**  
