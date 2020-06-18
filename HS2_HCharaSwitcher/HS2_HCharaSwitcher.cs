@@ -1,10 +1,20 @@
-﻿using HarmonyLib;
+﻿using System;
+using System.Collections;
+using System.Linq;
+using System.Collections.Generic;
+
+using HarmonyLib;
 
 using BepInEx;
+using BepInEx.Configuration;
 
-using Illusion.Game;
 using AIChara;
 using Manager;
+using CharaCustom;
+using Illusion.Game;
+
+using UnityEngine;
+using UnityEngine.UI;
 
 namespace HS2_HCharaSwitcher
 {
@@ -17,59 +27,255 @@ namespace HS2_HCharaSwitcher
         private static HS2_HCharaSwitcher instance;
         
         private static HScene hScene;
+        private static HSceneSprite hSprite;
         private static HSceneFlagCtrl hFlagCtrl;
         private static HSceneManager hSceneManager;
 
         private static ChaControl[] chaMales;
         private static ChaControl[] chaFemales;
 
+        private static Traverse htrav;
+        private static Traverse ftrav;
+
+        private static CanvasGroup canvas;
+        
+        private static ConfigEntry<bool> saveStatsOnSwitch { get; set; }
+        
         private void Awake()
         {
             instance = this;
             
+            saveStatsOnSwitch = Config.Bind("General", "Save stats when switching", false, new ConfigDescription("Save stats for the character who is getting switched. Might be buggy so disabled by default"));
+            
             Harmony.CreateAndPatchAll(typeof(HS2_HCharaSwitcher));
         }
-
-        //-- Start of HScene --//
+        
         [HarmonyPostfix, HarmonyPatch(typeof(HScene), "SetStartAnimationInfo")]
-        public static void HScene_SetStartAnimationInfo_Patch(HScene __instance, HSceneManager ___hSceneManager, ChaControl[] ___chaMales, ChaControl[] ___chaFemales)
+        public static void HScene_SetStartAnimationInfo_Patch(HScene __instance, HSceneManager ___hSceneManager, HSceneSprite ___sprite, ChaControl[] ___chaMales, ChaControl[] ___chaFemales)
         {
             hScene = __instance;
+            hSprite = ___sprite;
             hFlagCtrl = hScene.ctrlFlag;
             hSceneManager = ___hSceneManager;
 
             chaMales = ___chaMales;
             chaFemales = ___chaFemales;
-        }
+            
+            htrav = Traverse.Create(hScene);
+            ftrav = Traverse.Create(hFlagCtrl);
 
-        public static void ChangeCharacter(ChaControl chara, string card, bool is2nd)
-        {
-            if (string.IsNullOrEmpty(card))
+            var UI = GameObject.Find("UI");
+            if (UI == null)
                 return;
             
-            if (chara.sex == 1 && !hFlagCtrl.bFutanari)
+            var orig = UI.transform.Find("ClothPanel/CoordinatesCard");
+            if (orig == null)
+                return;
+            
+            var copy = Instantiate(orig, orig.transform.parent);
+            
+            var comp = copy.gameObject.GetComponent<HSceneSpriteCoordinatesCard>();
+            if (comp == null)
+                return;
+            
+            copy.name = "CharacterCard";
+            
+            var oldPos = copy.localPosition;
+            copy.localPosition = new Vector3(oldPos.x, -350, oldPos.z);
+
+            canvas = copy.gameObject.GetComponent<CanvasGroup>();
+
+            var undo = UI.transform.Find("ClothPanel/CharacterCard/CardImageBG/BeforeCoode");
+            if (undo == null)
+                return;
+            
+            Destroy(undo.gameObject);
+
+            var content = UI.transform.Find("ClothPanel/CharacterCard/CoodenatePanel/Scroll View/Viewport/Content");
+            if (content == null)
+                return;
+
+            var children = (from Transform child in content where child != null select child.gameObject).ToList();
+            children.ForEach(Destroy);
+            
+            var apply = UI.transform.Find("ClothPanel/CharacterCard/CoodenatePanel/DecideCoode");
+            if (apply == null)
+                return;
+            
+            var btn = apply.gameObject.GetComponent<Button>();
+            if (btn == null)
+                return;
+            
+            PopulateList(comp);
+            
+            var trav = Traverse.Create(comp);
+            var nodes = trav.Field("lstCoordinates").GetValue<List<HSceneSpriteCoordinatesNode>>();
+            
+            btn.onClick = new Button.ButtonClickedEvent();
+            btn.onClick.AddListener(delegate
             {
-                if ((!is2nd && chaFemales[0] == null) || (is2nd && chaFemales[1] == null))
-                    return;
-                
-                ChangeCharacterF(chara, card, is2nd);
+                var selected = trav.Property("_SelectedID").GetValue<int>();
+
+                foreach (var t in nodes.Where(t => t.id == selected))
+                    ChangeCharacter(t.fileName, hSceneManager.numFemaleClothCustom);
+            });
+
+            var sort = trav.Field("Sort").GetValue<Button[]>();
+            var sortUpDown = trav.Field("SortUpDown").GetValue<Button[]>();
+            var sortKind = trav.Field("sortKind").GetValue<int>();
+            
+            sort[0].onClick.AddListener(delegate
+            {
+                sort[0].gameObject.SetActive(false);
+                sort[1].gameObject.SetActive(true);
+                sortKind = 0;
+                comp.ListSort(sortKind);
+            });
+            
+            sort[1].onClick.AddListener(delegate
+            {
+                sort[0].gameObject.SetActive(true);
+                sort[1].gameObject.SetActive(false);
+                sortKind = 1;
+                comp.ListSort(sortKind);
+            });
+            
+            sortUpDown[0].onClick.AddListener(delegate
+            {
+                sortUpDown[0].gameObject.SetActive(false);
+                sortUpDown[1].gameObject.SetActive(true);
+                comp.ListSortUpDown(1);
+            });
+            
+            sortUpDown[1].onClick.AddListener(delegate
+            {
+                sortUpDown[0].gameObject.SetActive(true);
+                sortUpDown[1].gameObject.SetActive(false);
+                comp.ListSortUpDown(0);
+            });
+        }
+        
+        [HarmonyPostfix, HarmonyPatch(typeof(HSceneSprite), "OnClickCloth")]
+        public static void HSceneSprite_OnClickCloth_Patch(int mode)
+        {
+            if (canvas == null)
+                return;
+            
+            var visible = hSprite.objClothPanel.alpha == 1f;
+
+            if (visible)
+            {
+                if (mode != 2)
+                {
+                    canvas.alpha = 0f;
+                    canvas.blocksRaycasts = false;
+                }
+                else
+                {
+                    canvas.alpha = 1f;
+                    canvas.blocksRaycasts = true;
+                }
             }
-            else if (chara.sex == 0 || (chara.sex == 1 && hFlagCtrl.bFutanari))
+            else
             {
-                if ((!is2nd && chaMales[0] == null) || (is2nd && chaMales[1] == null))
-                    return;
-                
-                ChangeCharacterM(chara, card, is2nd);
+                canvas.alpha = 1f;
+                canvas.blocksRaycasts = true;
             }
         }
         
-        private static void ChangeCharacterF(ChaControl chara, string card, bool is2nd)
+        [HarmonyPostfix, HarmonyPatch(typeof(HSceneSprite), "ClothPanelClose")]
+        public static void HSceneSprite_ClothPanelClose_Patch()
         {
-            if (!chara.chaFile.LoadCharaFile(card, chara.sex))
+            if (canvas == null)
                 return;
 
-            var id = is2nd ? 1 : 0;
+            canvas.alpha = 0f;
+            canvas.blocksRaycasts = false;
+        }
+        
+        private static void PopulateList(HSceneSpriteCoordinatesCard comp)
+        {
+            var trav = Traverse.Create(comp);
+            var lstCoordinates = trav.Field("lstCoordinates").GetValue<List<HSceneSpriteCoordinatesNode>>();
+
+            foreach (var t in lstCoordinates)
+                Destroy(t.gameObject);
             
+            lstCoordinates.Clear();
+
+            var cards = CustomCharaFileInfoAssist.CreateCharaFileInfoList(false, true);
+            var newBase = new List<CustomClothesFileInfo>();
+            
+            foreach (var t in cards.Where(card => card != null))
+                newBase.Add(new CustomClothesFileInfo {FullPath = t.FullPath, FileName = t.FileName, name = t.name});
+
+            for (var i = 0; i < cards.Count; i++)
+            {
+                var no = i;
+
+                var hsceneSpriteCoordinatesNode = Instantiate(trav.Field("CoordinatesNode").GetValue<HSceneSpriteCoordinatesNode>(), trav.Field("Content").GetValue<Transform>());
+                hsceneSpriteCoordinatesNode.gameObject.SetActive(true);
+                
+                lstCoordinates.Add(hsceneSpriteCoordinatesNode);
+                lstCoordinates[no].id = no;
+                lstCoordinates[no].coodeName.text = cards[no].name;
+                lstCoordinates[no].coodeName.color = Game.defaultFontColor;
+                lstCoordinates[no].CreateCoodeTime = cards[no].time;
+                
+                lstCoordinates[no].GetComponent<Toggle>().onValueChanged.AddListener(delegate(bool val)
+                {
+                    if (val)
+                    {
+                        trav.Property("_SelectedID").SetValue(no);
+                        lstCoordinates[no].coodeName.color = Game.defaultFontColor;
+                        
+                        return;
+                    }
+                    
+                    lstCoordinates[no].coodeName.color = Game.selectFontColor;
+                });
+                
+                lstCoordinates[no].image = lstCoordinates[no].GetComponent<Image>();
+                lstCoordinates[no].fileName = cards[no].FullPath;
+            }
+
+            comp.ListSort(1);
+            comp.ListSortUpDown(1);
+
+            trav.Field("lstCoordinatesBase").SetValue(newBase);
+            trav.Field("lstCoordinates").SetValue(lstCoordinates);
+            
+            var pActions = comp.gameObject.GetComponentsInChildren<SceneAssist.PointerDownAction>();
+            foreach (var action in pActions)
+                action.listAction.Add(hSprite.OnClickSliderSelect);
+        }
+        
+        private static void ChangeCharacter(string card, int id)
+        {
+            if (string.IsNullOrEmpty(card))
+                return;
+
+            if (!ProcBase.endInit || htrav.Field("nowChangeAnim").GetValue<bool>() || hFlagCtrl.nowOrgasm)
+                return;
+
+            if (id > 1)
+                return;
+            
+            var chara = chaFemales[id];
+            if (chara == null || chara.visibleAll == false)
+                return;
+            
+            instance.StartCoroutine(ChangeCharacterF(chara, card, id));
+        }
+        
+        private static IEnumerator ChangeCharacterF(ChaControl chara, string card, int id)
+        {
+            if(saveStatsOnSwitch.Value)
+                SaveStatsF(id);
+
+            if (!chara.chaFile.LoadCharaFile(card, chara.sex))
+                yield break;
+
             chara.ChangeNowCoordinate();
             chara.Reload();
 
@@ -81,16 +287,19 @@ namespace HS2_HCharaSwitcher
             var mtrav = Traverse.Create(hSceneManager);
             
             var FemaleState = mtrav.Field("femaleState").GetValue<ChaFileDefine.State[]>();
-            FemaleState[id] = chara.fileGameInfo2.nowDrawState;
+            if (FemaleState != null)
+            {
+                FemaleState[id] = chara.fileGameInfo2.nowDrawState;
 
-            mtrav.Field("femaleState").SetValue(FemaleState);
-            hSceneManager.FemaleStateNum[id].Clear();
-            hSceneManager.FemaleStateNum[id].Add(ChaFileDefine.State.Favor, chara.fileGameInfo2.Favor);
-            hSceneManager.FemaleStateNum[id].Add(ChaFileDefine.State.Enjoyment, chara.fileGameInfo2.Enjoyment);
-            hSceneManager.FemaleStateNum[id].Add(ChaFileDefine.State.Slavery, chara.fileGameInfo2.Slavery);
-            hSceneManager.FemaleStateNum[id].Add(ChaFileDefine.State.Aversion, chara.fileGameInfo2.Aversion);
+                mtrav.Field("femaleState").SetValue(FemaleState);
+                hSceneManager.FemaleStateNum[id].Clear();
+                hSceneManager.FemaleStateNum[id].Add(ChaFileDefine.State.Favor, chara.fileGameInfo2.Favor);
+                hSceneManager.FemaleStateNum[id].Add(ChaFileDefine.State.Enjoyment, chara.fileGameInfo2.Enjoyment);
+                hSceneManager.FemaleStateNum[id].Add(ChaFileDefine.State.Slavery, chara.fileGameInfo2.Slavery);
+                hSceneManager.FemaleStateNum[id].Add(ChaFileDefine.State.Aversion, chara.fileGameInfo2.Aversion);
+            }
 
-            if (!is2nd)
+            if (id == 0)
             {
                 switch (hSceneManager.FemaleState[0])
                 {
@@ -123,7 +332,7 @@ namespace HS2_HCharaSwitcher
                 hScene.ctrlFemaleCollisionCtrls[id].Init(chara, chara.objHitHead, chara.objHitBody);
             }
 
-            if (!is2nd)
+            if (id == 0)
             {
                 ChaFileGameInfo2 fileGameInfo = hSceneManager.females[0].fileGameInfo2;
                 
@@ -136,17 +345,15 @@ namespace HS2_HCharaSwitcher
             // shapes stuff L428 - L441
 
             hScene.ctrlHitObjectFemales[id] = new HitObjectCtrl();
-            if (chaFemales[id] != null && chaFemales[id].objBodyBone != null)
+            if (chaFemales[id].objBodyBone != null)
             {
                 hScene.ctrlHitObjectFemales[id].id = id;
                 instance.StartCoroutine(hScene.ctrlHitObjectFemales[id].HitObjInit(1, chaFemales[id].objBodyBone, chaFemales[id]));
             }
 
             // shapes stuff L467 - L476
-            
-            var htrav = Traverse.Create(hScene);
-            
-            if (!is2nd)
+
+            if (id == 0)
             {
                 htrav.Field("ctrlFeelHit").Method("FeelHitInit", hSceneManager.Personality[0]).GetValue();
                 htrav.Field("ctrlFeelHit").Method("SetFeelCha", chaFemales[0]).GetValue();
@@ -160,36 +367,159 @@ namespace HS2_HCharaSwitcher
                 yures[id].femaleID = id;
             }
             
-            if(!is2nd)
+            if(id == 0)
                 hScene.ctrlAuto.Load(hSceneManager.strAssetLeaveItToYouFolder, hSceneManager.Personality[0]);
 
             var dynamics = htrav.Field("ctrlDynamics").GetValue<DynamicBoneReferenceCtrl[]>();
             dynamics?[id].Init(chaFemales[id]);
 
-            instance.StartCoroutine(is2nd
+            instance.StartCoroutine(id == 1
             ? hScene.ctrlVoice.Init(hSceneManager.females[0].fileParam2.personality,
                 hSceneManager.females[0].fileParam2.voicePitch, hSceneManager.females[0],
                 hSceneManager.females[1].fileParam2.personality, hSceneManager.females[1].fileParam2.voicePitch,
                 hSceneManager.females[1])
             : hScene.ctrlVoice.Init(hSceneManager.females[0].fileParam2.personality,
                 hSceneManager.females[0].fileParam2.voicePitch, hSceneManager.females[0]));
-
-            if (!is2nd)
+            
+            var animatorStateInfo = chaFemales[id].getAnimatorStateInfo(0);
+            hScene.ctrlVoice.BreathProc(animatorStateInfo, chaFemales[id], id, id == 0 && hFlagCtrl.voice.sleep);
+            hSprite.Setting(chaFemales, chaMales);
+            hSprite.charaChoice.Init();
+            
+            var proc = htrav.Field("lstProc").GetValue<List<ProcBase>>();
+            foreach (var procBase in proc)
             {
-                var animatorStateInfo = chaFemales[0].getAnimatorStateInfo(0);
-                hScene.ctrlVoice.BreathProc(animatorStateInfo, chaFemales[0], 0, hFlagCtrl.voice.sleep);
+                var trav = Traverse.Create(procBase);
+                trav.Field("feelHit").SetValue(htrav.Field("ctrlFeelHit").GetValue<FeelHit>());
+                trav.Field("chaFemales").SetValue(chaFemales);
+                trav.Field("ctrlYures").SetValue(yures);
+
+                try
+                {
+                    procBase.setAnimationParamater();
+                }
+                catch
+                {
+                    // Error if ProcBase is Les and 2nd girl doesn't exist
+                }
             }
+            
+            yield return 0;
 
-            if (Voice.IsPlay(hFlagCtrl.voice.voiceTrs[id]))
-                Voice.Stop(hFlagCtrl.voice.voiceTrs[id]);
+            hFlagCtrl.click = HSceneFlagCtrl.ClickKind.RecoverFaintness;
 
-            // better current animation not starting
-            instance.StartCoroutine(hScene.ChangeAnimation(hScene.StartAnimInfo, true, false, false));
+            yield return 0;
+            yield return 0;
+            yield return 0;
+            yield return 0;
+
+            var currentAnim = hFlagCtrl.nowAnimationInfo;
+            currentAnim.nStatePtns.Add(-1);
+            
+            hFlagCtrl.selectAnimationListInfo = currentAnim;
         }
-        
-        private static void ChangeCharacterM(ChaControl chara, string card, bool is2nd)
-        {
 
+        private static void SaveStatsF(int id)
+        {
+            chaFemales[id].fileGameInfo2.hCount++;
+            
+            hSceneManager.maleFinish = hFlagCtrl.numInside + hFlagCtrl.numOutSide + hFlagCtrl.numDrink + hFlagCtrl.numVomit;
+            hSceneManager.femaleFinish = hFlagCtrl.numOrgasmTotal;
+            hSceneManager.endStatus = (byte)(hFlagCtrl.isFaintness ? 1 : 0);
+            
+            var oldstate = chaFemales[id].fileGameInfo2.nowDrawState;
+            hFlagCtrl.EndSetAddMindParam(chaFemales[id].fileParam2.hAttribute);
+            hFlagCtrl.EndSetAddTraitParam(chaFemales[id].fileParam2.trait);
+            hFlagCtrl.EndSetAddTaiiParam(chaFemales[id].fileGameInfo2);
+            hFlagCtrl.ParamCalc(chaFemales[id].fileGameInfo2, chaFemales[0].fileParam2.personality);
+            var newstate = chaFemales[id].fileGameInfo2.nowDrawState;
+            
+            var oldresist = chaFemales[id].fileGameInfo2.resistH;
+            hFlagCtrl.FinishResistParamCalc(chaFemales[id].fileGameInfo2, chaFemales[id].fileParam2.hAttribute, chaFemales[id].fileParam2.personality);
+            var newresist = chaFemales[id].fileGameInfo2.resistH;
+            
+            var newStateNum = -1;
+            var newResistNum = -1;
+            
+            var siruCount = Enum.GetValues(typeof(ChaFileDefine.SiruParts)).Cast<object>().Count(obj => chaFemales[id].GetSiruFlag((ChaFileDefine.SiruParts) obj) == 2);
+
+            if (oldstate != newstate)
+            {
+                if (oldstate == ChaFileDefine.State.Broken)
+                    newStateNum = 6;
+                else
+                    switch (newstate)
+                    {
+                        case ChaFileDefine.State.Blank:
+                            newStateNum = -1;
+                            break;
+                        case ChaFileDefine.State.Favor:
+                            newStateNum = 2;
+                            break;
+                        case ChaFileDefine.State.Enjoyment:
+                            newStateNum = 3;
+                            break;
+                        case ChaFileDefine.State.Aversion:
+                            newStateNum = 5;
+                            break;
+                        case ChaFileDefine.State.Slavery:
+                            newStateNum = 4;
+                            break;
+                        case ChaFileDefine.State.Broken:
+                            newStateNum = 0;
+                            break;
+                        case ChaFileDefine.State.Dependence:
+                            newStateNum = 1;
+                            break;
+                    }
+            }
+            
+            if (oldresist != newresist && newresist >= 100)
+                newResistNum = 0;
+
+            htrav.Method("AfterPtn", chaFemales[id].fileParam2.personality, chaFemales[id].fileGameInfo2, newStateNum, newResistNum, siruCount).GetValue();
+
+            hFlagCtrl.rateTuya = 0f;
+            hFlagCtrl.rateNip = 0f;
+            hFlagCtrl.numOrgasm = 0;
+            hFlagCtrl.numOrgasmTotal = 0;
+            hFlagCtrl.numSameOrgasm = 0;
+            hFlagCtrl.numInside = 0;
+            hFlagCtrl.numOutSide = 0;
+            hFlagCtrl.numDrink = 0;
+            hFlagCtrl.numVomit = 0;
+            hFlagCtrl.numOrgasmM2 = 0;
+            hFlagCtrl.numShotM2 = 0;
+            hFlagCtrl.numOrgasmF2 = 0;
+            hFlagCtrl.numShotF2 = 0;
+            hFlagCtrl.numAnalOrgasm = 0;
+            hFlagCtrl.numAibu = 0;
+            hFlagCtrl.numHoushi = 0;
+            hFlagCtrl.numSonyu = 0;
+            hFlagCtrl.numLes = 0;
+            hFlagCtrl.numUrine = 0;
+            hFlagCtrl.numFaintness = 0;
+            hFlagCtrl.numKokan = 0;
+            hFlagCtrl.numAnal = 0;
+            hFlagCtrl.numLeadFemale = 0;
+            
+            ftrav.Field("EndAddTaiiParam").Method("Clear").GetValue();
+            ftrav.Field("SendParam").Method("Clear").GetValue();
+            ftrav.Field("FinishResistTaii").Method("Clear").GetValue();
+
+            hFlagCtrl.feelPain = 0f;
+
+            hSceneManager.maleFinish = 0;
+            hSceneManager.femaleFinish = 0;
+            hSceneManager.endStatus = 0;
+            
+            if (chaFemales[id].fileGameInfo2 == null) 
+                return;
+            
+            if (chaFemales[id].chaID == -1)
+                chaFemales[id].chaFile.SaveCharaFile(Singleton<Character>.Instance.conciergePath);
+            else if (!chaFemales[id].chaFile.charaFileName.IsNullOrEmpty())
+                chaFemales[id].chaFile.SaveCharaFile(chaFemales[id].chaFile.charaFileName);
         }
     }
 }
