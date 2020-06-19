@@ -101,6 +101,12 @@ namespace HS2_HCharaSwitcher
             var apply = UI.transform.Find("ClothPanel/CharacterCard/CoodenatePanel/DecideCoode");
             if (apply == null)
                 return;
+        
+            var text = apply.gameObject.GetComponentInChildren<Text>();
+            if (text == null)
+                return;
+            
+            text.text = "Switch";
             
             var btn = apply.gameObject.GetComponent<Button>();
             if (btn == null)
@@ -268,11 +274,13 @@ namespace HS2_HCharaSwitcher
             instance.StartCoroutine(ChangeCharacterF(chara, card, id));
         }
         
+        // change character coroutine //
         private static IEnumerator ChangeCharacterF(ChaControl chara, string card, int id)
         {
             if(saveStatsOnSwitch.Value)
                 SaveStatsF(id);
-
+            
+            // card, outfit, reload
             if (!chara.chaFile.LoadCharaFile(card, chara.sex))
                 yield break;
 
@@ -284,8 +292,8 @@ namespace HS2_HCharaSwitcher
             
             chara.visibleAll = true;
 
+            // States
             var mtrav = Traverse.Create(hSceneManager);
-            
             var FemaleState = mtrav.Field("femaleState").GetValue<ChaFileDefine.State[]>();
             if (FemaleState != null)
             {
@@ -326,12 +334,14 @@ namespace HS2_HCharaSwitcher
                 }
             }
 
+            // Hitobjects, collisions
             if (chara.objTop != null)
             {
                 chara.LoadHitObject();
                 hScene.ctrlFemaleCollisionCtrls[id].Init(chara, chara.objHitHead, chara.objHitBody);
             }
 
+            // BGM
             if (id == 0)
             {
                 ChaFileGameInfo2 fileGameInfo = hSceneManager.females[0].fileGameInfo2;
@@ -344,6 +354,7 @@ namespace HS2_HCharaSwitcher
             
             // shapes stuff L428 - L441
 
+            // More hitobjects
             hScene.ctrlHitObjectFemales[id] = new HitObjectCtrl();
             if (chaFemales[id].objBodyBone != null)
             {
@@ -353,12 +364,14 @@ namespace HS2_HCharaSwitcher
 
             // shapes stuff L467 - L476
 
+            // FeelHit gauge
             if (id == 0)
             {
                 htrav.Field("ctrlFeelHit").Method("FeelHitInit", hSceneManager.Personality[0]).GetValue();
                 htrav.Field("ctrlFeelHit").Method("SetFeelCha", chaFemales[0]).GetValue();
             }
 
+            // yures and dynamics
             var yures = htrav.Field("ctrlYures").GetValue<YureCtrl[]>();
             if (yures != null)
             {
@@ -373,6 +386,7 @@ namespace HS2_HCharaSwitcher
             var dynamics = htrav.Field("ctrlDynamics").GetValue<DynamicBoneReferenceCtrl[]>();
             dynamics?[id].Init(chaFemales[id]);
 
+            // Voice stuff
             instance.StartCoroutine(id == 1
             ? hScene.ctrlVoice.Init(hSceneManager.females[0].fileParam2.personality,
                 hSceneManager.females[0].fileParam2.voicePitch, hSceneManager.females[0],
@@ -381,11 +395,15 @@ namespace HS2_HCharaSwitcher
             : hScene.ctrlVoice.Init(hSceneManager.females[0].fileParam2.personality,
                 hSceneManager.females[0].fileParam2.voicePitch, hSceneManager.females[0]));
             
+            // More voice stuff
             var animatorStateInfo = chaFemales[id].getAnimatorStateInfo(0);
             hScene.ctrlVoice.BreathProc(animatorStateInfo, chaFemales[id], id, id == 0 && hFlagCtrl.voice.sleep);
+            
+            // Reload UI stuff
             hSprite.Setting(chaFemales, chaMales);
             hSprite.charaChoice.Init();
             
+            // Reload ProcBases
             var proc = htrav.Field("lstProc").GetValue<List<ProcBase>>();
             foreach (var procBase in proc)
             {
@@ -405,20 +423,19 @@ namespace HS2_HCharaSwitcher
             }
             
             yield return 0;
+            yield return 0;
 
             hFlagCtrl.click = HSceneFlagCtrl.ClickKind.RecoverFaintness;
 
             yield return 0;
             yield return 0;
-            yield return 0;
-            yield return 0;
 
-            var currentAnim = hFlagCtrl.nowAnimationInfo;
-            currentAnim.nStatePtns.Add(-1);
-            
-            hFlagCtrl.selectAnimationListInfo = currentAnim;
+            // Change animation
+            hSprite.ChangeStart = true;
+            hFlagCtrl.selectAnimationListInfo = CopyAnimationInfo(hFlagCtrl.nowAnimationInfo);
         }
 
+        // probably very bad way of saving old chara stats before switch //
         private static void SaveStatsF(int id)
         {
             chaFemales[id].fileGameInfo2.hCount++;
@@ -520,6 +537,68 @@ namespace HS2_HCharaSwitcher
                 chaFemales[id].chaFile.SaveCharaFile(Singleton<Character>.Instance.conciergePath);
             else if (!chaFemales[id].chaFile.charaFileName.IsNullOrEmpty())
                 chaFemales[id].chaFile.SaveCharaFile(chaFemales[id].chaFile.charaFileName);
+        }
+
+        private static HScene.AnimationListInfo CopyAnimationInfo(HScene.AnimationListInfo original)
+        {
+            var newInfo = new HScene.AnimationListInfo
+            {
+                id = original.id,
+                nameAnimation = original.nameAnimation,
+                assetpathBaseM = original.assetpathBaseM,
+                assetBaseM = original.assetBaseM,
+                assetpathMale = original.assetpathMale,
+                fileMale = original.fileMale,
+                isMaleHitObject = original.isMaleHitObject,
+                fileMotionNeckMale = original.fileMotionNeckMale,
+                assetpathBaseM2 = original.assetpathBaseM2,
+                assetBaseM2 = original.assetBaseM2,
+                assetpathMale2 = original.assetpathMale2,
+                fileMale2 = original.fileMale2,
+                isMaleHitObject2 = original.isMaleHitObject2,
+                fileMotionNeckMale2 = original.fileMotionNeckMale2,
+                assetpathBaseF = original.assetpathBaseF,
+                assetBaseF = original.assetBaseF,
+                assetpathFemale = original.assetpathFemale,
+                fileFemale = original.fileFemale,
+                isFemaleHitObject = original.isFemaleHitObject,
+                fileMotionNeckFemale = original.fileMotionNeckFemale,
+                fileMotionNeckFemalePlayer = original.fileMotionNeckFemalePlayer,
+                assetpathBaseF2 = original.assetpathBaseF2,
+                assetBaseF2 = original.assetBaseF2,
+                assetpathFemale2 = original.assetpathFemale2,
+                fileFemale2 = original.fileFemale2,
+                isFemaleHitObject2 = original.isFemaleHitObject2,
+                fileMotionNeckFemale2 = original.fileMotionNeckFemale2,
+                ActionCtrl = original.ActionCtrl,
+                nPositons = original.nPositons,
+                lstOffset = original.lstOffset,
+                isNeedItem = original.isNeedItem,
+                nDownPtn = original.nDownPtn,
+                nStatePtns = original.nStatePtns,
+                nFaintnessLimit = original.nFaintnessLimit,
+                nIyaAction = original.nIyaAction,
+                Achievments = original.Achievments,
+                nInitiativeFemale = original.nInitiativeFemale,
+                nBackInitiativeID = original.nBackInitiativeID,
+                lstSystem = original.lstSystem,
+                nMaleSon = original.nMaleSon,
+                nFemaleUpperCloths = original.nFemaleUpperCloths,
+                nFemaleLowerCloths = original.nFemaleLowerCloths,
+                nFeelHit = original.nFeelHit,
+                nameCamera = original.nameCamera,
+                fileSiruPaste = original.fileSiruPaste,
+                fileSiruPasteSecond = original.fileSiruPasteSecond,
+                fileSe = original.fileSe,
+                nShortBreahtPlay = original.nShortBreahtPlay,
+                hasVoiceCategory = original.hasVoiceCategory,
+                nPromiscuity = original.nPromiscuity,
+                reverseTaii = original.reverseTaii,
+                Event = original.Event,
+                ParmID = original.ParmID
+            };
+
+            return newInfo;
         }
     }
 }
