@@ -38,6 +38,8 @@ namespace HS2_HCharaSwitcher
         private static Traverse ftrav;
 
         private static CanvasGroup canvas;
+
+        private static bool canSwitch;
         
         private static ConfigEntry<bool> saveStatsOnSwitch { get; set; }
         
@@ -97,6 +99,15 @@ namespace HS2_HCharaSwitcher
 
             var children = (from Transform child in content where child != null select child.gameObject).ToList();
             children.ForEach(Destroy);
+            
+            var image = UI.transform.Find("ClothPanel/CharacterCard/CoodenatePanel/Image");
+            if (image == null)
+                return;
+
+            var imgcopy = Instantiate(image, image.transform.parent.parent);
+            imgcopy.name = "Separator";
+            imgcopy.localPosition = new Vector3(202, 5, 0);
+            imgcopy.localScale = new Vector3(2, 1, 1);
             
             var apply = UI.transform.Find("ClothPanel/CharacterCard/CoodenatePanel/DecideCoode");
             if (apply == null)
@@ -159,6 +170,8 @@ namespace HS2_HCharaSwitcher
                 sortUpDown[1].gameObject.SetActive(false);
                 comp.ListSortUpDown(0);
             });
+
+            canSwitch = true;
         }
         
         [HarmonyPostfix, HarmonyPatch(typeof(HSceneSprite), "OnClickCloth")]
@@ -261,12 +274,9 @@ namespace HS2_HCharaSwitcher
             if (string.IsNullOrEmpty(card))
                 return;
 
-            if (!ProcBase.endInit || htrav.Field("nowChangeAnim").GetValue<bool>() || hFlagCtrl.nowOrgasm)
+            if (!canSwitch || !ProcBase.endInit || htrav.Field("nowChangeAnim").GetValue<bool>() || hFlagCtrl.nowOrgasm || id > 1)
                 return;
 
-            if (id > 1)
-                return;
-            
             var chara = chaFemales[id];
             if (chara == null || chara.visibleAll == false)
                 return;
@@ -274,15 +284,19 @@ namespace HS2_HCharaSwitcher
             instance.StartCoroutine(ChangeCharacterF(chara, card, id));
         }
         
-        // change character coroutine //
         private static IEnumerator ChangeCharacterF(ChaControl chara, string card, int id)
         {
+            canSwitch = false;
+            
             if(saveStatsOnSwitch.Value)
                 SaveStatsF(id);
             
             // card, outfit, reload
             if (!chara.chaFile.LoadCharaFile(card, chara.sex))
+            {
+                canSwitch = true;
                 yield break;
+            }
 
             chara.ChangeNowCoordinate();
             chara.Reload();
@@ -352,7 +366,7 @@ namespace HS2_HCharaSwitcher
                     Utils.Sound.Play(new Utils.Sound.SettingBGM(BGM.fur));
             }
             
-            // shapes stuff L428 - L441
+            // missing shapes stuff L428 - L441
 
             // More hitobjects
             hScene.ctrlHitObjectFemales[id] = new HitObjectCtrl();
@@ -362,7 +376,7 @@ namespace HS2_HCharaSwitcher
                 instance.StartCoroutine(hScene.ctrlHitObjectFemales[id].HitObjInit(1, chaFemales[id].objBodyBone, chaFemales[id]));
             }
 
-            // shapes stuff L467 - L476
+            // missing shapes stuff L467 - L476
 
             // FeelHit gauge
             if (id == 0)
@@ -425,14 +439,20 @@ namespace HS2_HCharaSwitcher
             yield return 0;
             yield return 0;
 
-            hFlagCtrl.click = HSceneFlagCtrl.ClickKind.RecoverFaintness;
+            // Let her sleep
+            if (!hFlagCtrl.voice.sleep)
+            {
+                hFlagCtrl.click = HSceneFlagCtrl.ClickKind.RecoverFaintness;
 
-            yield return 0;
-            yield return 0;
-
-            // Change animation
+                yield return 0;
+                yield return 0;
+            }
+            
+            // Reload animation. The copy is unavoidable because there's an equals check for new animation
             hSprite.ChangeStart = true;
             hFlagCtrl.selectAnimationListInfo = CopyAnimationInfo(hFlagCtrl.nowAnimationInfo);
+
+            canSwitch = true;
         }
 
         // probably very bad way of saving old chara stats before switch //
