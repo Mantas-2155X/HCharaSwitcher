@@ -32,4 +32,4 @@ using System.Runtime.InteropServices;
 // by using the '*' as shown below:
 // [assembly: AssemblyVersion("1.0.*")]
 [assembly: AssemblyVersion(HS2_HCharaSwitcher.HS2_HCharaSwitcher.VERSION)]
-[assembly: AssemblyFileVersion("1.0.0.0")]
+[assembly: AssemblyFileVersion(HS2_HCharaSwitcher.HS2_HCharaSwitcher.VERSION)]
