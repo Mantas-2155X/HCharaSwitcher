@@ -106,10 +106,7 @@ namespace HS2_HCharaSwitcher
             lstCoordinates.Clear();
 
             var cards = CustomCharaFileInfoAssist.CreateCharaFileInfoList(false, true);
-            var newBase = new List<CustomClothesFileInfo>();
-            
-            foreach (var t in cards.Where(card => card != null))
-                newBase.Add(new CustomClothesFileInfo {FullPath = t.FullPath, FileName = t.FileName, name = t.name});
+            var newBase = cards.Where(card => card != null).Select(t => new CustomClothesFileInfo {FullPath = t.FullPath, FileName = t.FileName, name = t.name}).ToList();
 
             for (var i = 0; i < cards.Count; i++)
             {
