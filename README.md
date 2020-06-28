@@ -10,7 +10,9 @@ This plugin allows you to change character cards during H scene.
 * Changes personality, voice, BGM, ABMX, Overlays, other data according to the character card
 
 **Usage:**  
-* todo
+* Open the coordinate card UI and a new window which allows you to change cards should open
+* Select a character in the top character picker
+* Click "Switch"
 
 **Download:**  
 * Get the latest release for your game from https://github.com/Mantas-2155X/HCharaSwitcher/releases  
