@@ -25,5 +25,6 @@ This plugin allows you to change character cards during H scene.
 * Open the plugin settings and change the settings according to your needs.  
 
 **Notes:**
+* If you wish to use hs2plug with this, tell the creator Katarsys to fix his plugin.  
 * Needs https://github.com/BepInEx/BepInEx for the plugin.
 * Needs https://github.com/BepInEx/BepInEx.ConfigurationManager for the configuration.
