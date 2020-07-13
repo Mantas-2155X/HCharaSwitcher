@@ -15,7 +15,7 @@ namespace HS2_HCharaSwitcher
     [BepInPlugin(nameof(HS2_HCharaSwitcher), nameof(HS2_HCharaSwitcher), VERSION)]
     public class HS2_HCharaSwitcher : BaseUnityPlugin
     {
-        public const string VERSION = "1.0.0";
+        public const string VERSION = "1.1.0";
 
         private static HS2_HCharaSwitcher instance;
 
@@ -231,8 +231,8 @@ namespace HS2_HCharaSwitcher
             yield return 0;
             yield return 0;
 
-            // Let her sleep
-            if (!hFlagCtrl.voice.sleep)
+            // Refreshen from weakness
+            if (Tools.wakeToggle.isOn && hFlagCtrl.isFaintness)
             {
                 hFlagCtrl.click = HSceneFlagCtrl.ClickKind.RecoverFaintness;
 

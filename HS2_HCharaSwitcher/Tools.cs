@@ -17,6 +17,8 @@ namespace HS2_HCharaSwitcher
         private static CanvasGroup canvas;
         private static Traverse ctrav;
 
+        public static Toggle wakeToggle;
+        
         public static void CreateUI()
         {
             var UI = GameObject.Find("UI");
@@ -79,17 +81,32 @@ namespace HS2_HCharaSwitcher
                 return;
             
             PopulateList();
-            
+
             var nodes = ctrav.Field("lstCoordinates").GetValue<List<HSceneSpriteCoordinatesNode>>();
             
             btn.onClick = new Button.ButtonClickedEvent();
             btn.onClick.AddListener(delegate
             {
-                var selected = Tools.ctrav.Property("_SelectedID").GetValue<int>();
+                var selected = ctrav.Property("_SelectedID").GetValue<int>();
 
                 foreach (var t in nodes.Where(t => t.id == selected))
                     HS2_HCharaSwitcher.ChangeCharacter(t.fileName, HS2_HCharaSwitcher.hSceneManager.numFemaleClothCustom);
             });
+
+            var checkBox = UI.transform.Find("ScreenEffect/Panel/DetailPanel/AmbientOcclusion/UI/Draw");
+            
+            var wakeCheckBox = Object.Instantiate(checkBox, apply.parent);
+            wakeCheckBox.localPosition = new Vector3(225, -256, 0);
+            wakeCheckBox.name = "Refreshen";
+
+            var wakeText = wakeCheckBox.GetComponentInChildren<Text>();
+            wakeText.text = "Refreshen";
+            
+            wakeToggle = wakeCheckBox.GetComponentInChildren<Toggle>();
+            wakeToggle.onValueChanged.RemoveAllListeners();
+            wakeToggle.onValueChanged = new Toggle.ToggleEvent();
+            
+            wakeToggle.isOn = true;
 
             SetupSortButtons();
             
