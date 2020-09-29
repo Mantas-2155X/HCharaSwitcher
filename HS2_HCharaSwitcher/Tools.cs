@@ -17,7 +17,11 @@ namespace HS2_HCharaSwitcher
         private static CanvasGroup canvas;
         private static Traverse ctrav;
 
+        private static Button applyBtn;
+        
         public static Toggle wakeToggle;
+
+        public static bool isSelectedFemale;
         
         public static void CreateUI()
         {
@@ -69,33 +73,67 @@ namespace HS2_HCharaSwitcher
             var apply = UI.transform.Find("ClothPanel/CharacterCard/CoodenatePanel/DecideCoode");
             if (apply == null)
                 return;
-        
+
+            var coodPanel = apply.parent;
+            
             var text = apply.gameObject.GetComponentInChildren<Text>();
             if (text == null)
                 return;
             
             text.text = "Switch";
             
-            var btn = apply.gameObject.GetComponent<Button>();
-            if (btn == null)
+            applyBtn = apply.gameObject.GetComponent<Button>();
+            if (applyBtn == null)
                 return;
             
             PopulateList();
+            SetupSwitch();
 
-            var nodes = ctrav.Field("lstCoordinates").GetValue<List<HSceneSpriteCoordinatesNode>>();
-            
-            btn.onClick = new Button.ButtonClickedEvent();
-            btn.onClick.AddListener(delegate
             {
-                var selected = ctrav.Property("_SelectedID").GetValue<int>();
+                var btnCopy = Object.Instantiate(apply, coodPanel);
+                btnCopy.name = "Swap Girls";
 
-                foreach (var t in nodes.Where(t => t.id == selected))
-                    HS2_HCharaSwitcher.ChangeCharacter(t.fileName, HS2_HCharaSwitcher.hSceneManager.numFemaleClothCustom);
-            });
+                var tr = btnCopy.GetComponent<RectTransform>();
+                tr.offsetMin = new Vector2(-102.5f, 255);
+                tr.offsetMax = new Vector2(-37.5f, 285);
+                
+                var btnText = btnCopy.GetComponentInChildren<Text>();
+                btnText.text = "Swap Girls";
+                btnText.resizeTextForBestFit = true;
 
+                var btnComp = btnCopy.GetComponent<Button>();
+                
+                btnComp.onClick = new Button.ButtonClickedEvent();
+                btnComp.onClick.AddListener(delegate
+                {
+                    HS2_HCharaSwitcher.instance.StartCoroutine(HS2_HCharaSwitcher.SwapCharacters(true));
+                });
+            }
+            
+            {
+                var btnCopy = Object.Instantiate(apply, coodPanel);
+                btnCopy.name = "Swap Boys";
+
+                var tr = btnCopy.GetComponent<RectTransform>();
+                tr.offsetMin = new Vector2(-32.5f, 255);
+                tr.offsetMax = new Vector2(32.5f, 285);
+                
+                var btnText = btnCopy.GetComponentInChildren<Text>();
+                btnText.text = "Swap Boys";
+                btnText.resizeTextForBestFit = true;
+
+                var btnComp = btnCopy.GetComponent<Button>();
+                
+                btnComp.onClick = new Button.ButtonClickedEvent();
+                btnComp.onClick.AddListener(delegate
+                {
+                    HS2_HCharaSwitcher.instance.StartCoroutine(HS2_HCharaSwitcher.SwapCharacters(false));
+                });
+            }
+            
             var checkBox = UI.transform.Find("ScreenEffect/Panel/DetailPanel/AmbientOcclusion/UI/Draw");
             
-            var wakeCheckBox = Object.Instantiate(checkBox, apply.parent);
+            var wakeCheckBox = Object.Instantiate(checkBox, coodPanel);
             wakeCheckBox.localPosition = new Vector3(225, -256, 0);
             wakeCheckBox.name = "Refreshen";
 
@@ -113,7 +151,7 @@ namespace HS2_HCharaSwitcher
             HS2_HCharaSwitcher.canSwitch = true;
         }
         
-        private static void PopulateList()
+        public static void PopulateList()
         {
             var lstCoordinates = ctrav.Field("lstCoordinates").GetValue<List<HSceneSpriteCoordinatesNode>>();
 
@@ -122,7 +160,7 @@ namespace HS2_HCharaSwitcher
             
             lstCoordinates.Clear();
 
-            var cards = CustomCharaFileInfoAssist.CreateCharaFileInfoList(false, true);
+            var cards = CustomCharaFileInfoAssist.CreateCharaFileInfoList(!isSelectedFemale, isSelectedFemale);
             var newBase = cards.Where(card => card != null).Select(t => new CustomClothesFileInfo {FullPath = t.FullPath, FileName = t.FileName, name = t.name}).ToList();
 
             for (var i = 0; i < cards.Count; i++)
@@ -166,6 +204,34 @@ namespace HS2_HCharaSwitcher
                 action.listAction.Add(HS2_HCharaSwitcher.hSprite.OnClickSliderSelect);
         }
 
+        public static void SetupChaChoice(HSceneSpriteChaChoice choice)
+        {
+            var dropdown = Traverse.Create(choice).Field("dropdown").GetValue<Dropdown>();
+            if (dropdown == null)
+                return;
+
+            var list = new List<string>();
+            list.AddRange(from chara in HS2_HCharaSwitcher.chaFemales where chara != null && chara.fileParam != null select chara.fileParam.fullname);
+            list.AddRange(from chara in HS2_HCharaSwitcher.chaMales where chara != null && chara.fileParam != null select chara.fileParam.fullname);
+
+            for (var i = 0; i < dropdown.options.Count; i++)
+                dropdown.options[i].text = list[i];
+        }
+        
+        public static void SetupSwitch()
+        {
+            var nodes = ctrav.Field("lstCoordinates").GetValue<List<HSceneSpriteCoordinatesNode>>();
+            
+            applyBtn.onClick = new Button.ButtonClickedEvent();
+            applyBtn.onClick.AddListener(delegate
+            {
+                var selected = ctrav.Property("_SelectedID").GetValue<int>();
+
+                foreach (var t in nodes.Where(t => t.id == selected))
+                    HS2_HCharaSwitcher.ChangeCharacter(t.fileName, HS2_HCharaSwitcher.hSceneManager.numFemaleClothCustom);
+            });
+        }
+        
         private static void SetupSortButtons()
         {
             var sort = ctrav.Field("Sort").GetValue<Button[]>();

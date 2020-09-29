@@ -33,55 +33,45 @@
     </PropertyGroup>
     <ItemGroup>
         <Reference Include="0Harmony, Version=2.0.0.0, Culture=neutral, PublicKeyToken=null">
-          <HintPath>..\..\..\..\..\..\media\illusion\HoneySelect 2\BepInEx\core\0Harmony.dll</HintPath>
-            <Private>False</Private>
+          <HintPath>..\..\..\libs\GitHub\BepInEx\latest\BepInEx\core\0Harmony.dll</HintPath>
         </Reference>
         <Reference Include="Assembly-CSharp, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null">
-          <HintPath>..\..\..\..\..\..\media\illusion\HoneySelect 2\HoneySelect2_Data\Managed\Assembly-CSharp.dll</HintPath>
-            <Private>False</Private>
+          <HintPath>..\..\..\libs\Game\HS2\Assembly-CSharp.dll</HintPath>
         </Reference>
-        <Reference Include="BepInEx, Version=5.1.0.0, Culture=neutral, PublicKeyToken=null">
-          <HintPath>..\..\..\..\..\..\media\illusion\HoneySelect 2\BepInEx\core\BepInEx.dll</HintPath>
-            <Private>False</Private>
+        <Reference Include="BepInEx, Version=5.3.0.0, Culture=neutral, PublicKeyToken=null">
+          <HintPath>..\..\..\libs\GitHub\BepInEx\latest\BepInEx\core\BepInEx.dll</HintPath>
         </Reference>
         <Reference Include="BepInEx.Harmony, Version=2.0.0.0, Culture=neutral, PublicKeyToken=null">
-          <HintPath>..\..\..\..\..\..\media\illusion\HoneySelect 2\BepInEx\core\BepInEx.Harmony.dll</HintPath>
-            <Private>False</Private>
+          <HintPath>..\..\..\libs\GitHub\BepInEx\latest\BepInEx\core\BepInEx.Harmony.dll</HintPath>
         </Reference>
         <Reference Include="IL, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null">
-          <HintPath>..\..\..\..\..\..\media\illusion\HoneySelect 2\HoneySelect2_Data\Managed\IL.dll</HintPath>
-            <Private>False</Private>
+          <HintPath>..\..\..\libs\Game\HS2\IL.dll</HintPath>
         </Reference>
         <Reference Include="System" />
         <Reference Include="System.Core" />
         <Reference Include="System.Data" />
         <Reference Include="System.Xml" />
         <Reference Include="UnityEngine, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null">
-          <HintPath>..\..\..\..\..\..\media\illusion\HoneySelect 2\HoneySelect2_Data\Managed\UnityEngine.dll</HintPath>
-            <Private>False</Private>
+          <HintPath>..\..\..\libs\Game\HS2\UnityEngine.dll</HintPath>
         </Reference>
         <Reference Include="UnityEngine.AnimationModule, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null">
-          <HintPath>..\..\..\..\..\..\media\illusion\HoneySelect 2\HoneySelect2_Data\Managed\UnityEngine.AnimationModule.dll</HintPath>
-            <Private>False</Private>
+          <HintPath>..\..\..\libs\Game\HS2\UnityEngine.AnimationModule.dll</HintPath>
         </Reference>
         <Reference Include="UnityEngine.AudioModule, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null">
-          <HintPath>..\..\..\..\..\..\media\illusion\HoneySelect 2\HoneySelect2_Data\Managed\UnityEngine.AudioModule.dll</HintPath>
-            <Private>False</Private>
+          <HintPath>..\..\..\libs\Game\HS2\UnityEngine.AudioModule.dll</HintPath>
         </Reference>
         <Reference Include="UnityEngine.CoreModule, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null">
-          <HintPath>..\..\..\..\..\..\media\illusion\HoneySelect 2\HoneySelect2_Data\Managed\UnityEngine.CoreModule.dll</HintPath>
-            <Private>False</Private>
+          <HintPath>..\..\..\libs\Game\HS2\UnityEngine.CoreModule.dll</HintPath>
         </Reference>
         <Reference Include="UnityEngine.UI, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null">
-          <HintPath>..\..\..\..\..\..\media\illusion\HoneySelect 2\HoneySelect2_Data\Managed\UnityEngine.UI.dll</HintPath>
-            <Private>False</Private>
+          <HintPath>..\..\..\libs\Game\HS2\UnityEngine.UI.dll</HintPath>
         </Reference>
         <Reference Include="UnityEngine.UIModule, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null">
-          <HintPath>..\..\..\..\..\..\media\illusion\HoneySelect 2\HoneySelect2_Data\Managed\UnityEngine.UIModule.dll</HintPath>
-            <Private>False</Private>
+          <HintPath>..\..\..\libs\Game\HS2\UnityEngine.UIModule.dll</HintPath>
         </Reference>
     </ItemGroup>
     <ItemGroup>
+        <Compile Include="Hooks.cs" />
         <Compile Include="HS2_HCharaSwitcher.cs" />
         <Compile Include="Properties\AssemblyInfo.cs" />
         <Compile Include="Tools.cs" />

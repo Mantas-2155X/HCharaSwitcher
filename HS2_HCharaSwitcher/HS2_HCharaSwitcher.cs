@@ -15,19 +15,19 @@ namespace HS2_HCharaSwitcher
     [BepInPlugin(nameof(HS2_HCharaSwitcher), nameof(HS2_HCharaSwitcher), VERSION)]
     public class HS2_HCharaSwitcher : BaseUnityPlugin
     {
-        public const string VERSION = "1.1.0";
+        public const string VERSION = "1.2.0";
 
-        private static HS2_HCharaSwitcher instance;
+        public static HS2_HCharaSwitcher instance;
 
-        private static HScene hScene;
+        public static HScene hScene;
         public static HSceneSprite hSprite;
-        private static HSceneFlagCtrl hFlagCtrl;
+        public static HSceneFlagCtrl hFlagCtrl;
         public static HSceneManager hSceneManager;
 
-        private static ChaControl[] chaMales;
-        private static ChaControl[] chaFemales;
+        public static ChaControl[] chaMales;
+        public static ChaControl[] chaFemales;
         
-        private static Traverse htrav;
+        public static Traverse htrav;
         
         public static bool canSwitch;
         
@@ -35,56 +35,70 @@ namespace HS2_HCharaSwitcher
         {
             instance = this;
             
-            Harmony.CreateAndPatchAll(typeof(HS2_HCharaSwitcher));
-        }
-        
-        [HarmonyPostfix, HarmonyPatch(typeof(HScene), nameof(HScene.SetStartAnimationInfo))]
-        public static void HScene_SetStartAnimationInfo_Patch(HScene __instance, HSceneManager ___hSceneManager, HSceneSprite ___sprite, ChaControl[] ___chaMales, ChaControl[] ___chaFemales)
-        {
-            hScene = __instance;
-            hSprite = ___sprite;
-            hFlagCtrl = hScene.ctrlFlag;
-            hSceneManager = ___hSceneManager;
+            Tools.isSelectedFemale = true;
 
-            chaMales = ___chaMales;
-            chaFemales = ___chaFemales;
+            var harmony = Harmony.CreateAndPatchAll(typeof(Hooks));
             
-            htrav = Traverse.Create(hScene);
-
-            Tools.CreateUI();
+            var iteratorMethod = AccessTools.Method(typeof(HSceneSpriteChaChoice), "<Init>b__17_0");
+            var postfix = new HarmonyMethod(typeof(Hooks), nameof(Hooks.HSceneSpriteChaChoice_Init_ChangeSelection));
+            harmony.Patch(iteratorMethod, null, postfix);
         }
-        
-        [HarmonyPostfix, HarmonyPatch(typeof(HSceneSprite), "OnClickCloth")]
-        public static void HSceneSprite_OnClickCloth_Patch(int mode)
-        {
-            if (hSprite.objClothPanel.alpha > 0.99f)
-                Tools.TogglePanel(mode == 2);
-            else
-                Tools.TogglePanel(true);
-        }
-
-        [HarmonyPostfix, HarmonyPatch(typeof(HSceneSprite), "ClothPanelClose")]
-        public static void HSceneSprite_ClothPanelClose_Patch() => Tools.TogglePanel(false);
 
         public static void ChangeCharacter(string card, int id)
         {
-            if (string.IsNullOrEmpty(card))
+            if (!canSwitch || !ProcBase.endInit || htrav.Field("nowChangeAnim").GetValue<bool>() || hFlagCtrl.nowOrgasm)
                 return;
 
-            if (!canSwitch || !ProcBase.endInit || htrav.Field("nowChangeAnim").GetValue<bool>() || hFlagCtrl.nowOrgasm || id > 1)
-                return;
-
-            var chara = chaFemales[id];
-            if (chara == null || chara.visibleAll == false)
-                return;
+            switch (id)
+            {
+                case 0:
+                case 1:
+                    var charaF = chaFemales[id];
+                    if (charaF == null)
+                        return;
             
-            instance.StartCoroutine(ChangeCharacterF(chara, card, id));
+                    instance.StartCoroutine(ChangeCharacterF(charaF, card, id));
+                    break;
+                case 2:
+                case 3:
+                    var charaM = chaMales[id - 2];
+                    if (charaM == null)
+                        return;
+            
+                    instance.StartCoroutine(ChangeCharacterM(charaM, card, id - 2));
+                    break;
+            }
+        }
+
+        public static IEnumerator SwapCharacters(bool swapFemales)
+        {
+            if (!canSwitch || !ProcBase.endInit || htrav.Field("nowChangeAnim").GetValue<bool>() || hFlagCtrl.nowOrgasm)
+                yield break;
+            
+            if (swapFemales && chaFemales[0] != null && chaFemales[1] != null)
+            {
+                var firstCard = chaFemales[0].chaFile.charaFileName;
+                var secondCard = chaFemales[1].chaFile.charaFileName;
+                    
+                yield return ChangeCharacterF(chaFemales[0], secondCard, 0);
+                yield return ChangeCharacterF(chaFemales[1], firstCard, 1);
+            }
+            else if (!swapFemales && chaMales[0] != null && chaMales[1] != null)
+            {
+                var firstCard = chaMales[0].chaFile.charaFileName;
+                var secondCard = chaMales[1].chaFile.charaFileName;
+                    
+                yield return ChangeCharacterM(chaMales[0], secondCard, 0);
+                yield return ChangeCharacterM(chaMales[1], firstCard, 1);
+            }
         }
         
         private static IEnumerator ChangeCharacterF(ChaControl chara, string card, int id)
         {
             canSwitch = false;
 
+            var visible = chara.visibleAll;
+            
             // card, outfit, reload
             if (!chara.chaFile.LoadCharaFile(card, chara.sex))
             {
@@ -98,7 +112,7 @@ namespace HS2_HCharaSwitcher
             hSceneManager.females[id] = chara;
             hSceneManager.Personality[id] = chara.chaFile.parameter2.personality;
             
-            chara.visibleAll = true;
+            chara.visibleAll = visible;
 
             // States & Rootmotion
             hSceneManager.SetFemaleState(id == 0 ? new[] {chaFemales[0], null} : new[] {null, chaFemales[1]});
@@ -213,8 +227,8 @@ namespace HS2_HCharaSwitcher
             
             // Reload UI stuff
             hSprite.Setting(chaFemales, chaMales);
-            hSprite.charaChoice.Init();
-            
+            Tools.SetupChaChoice(hSprite.charaChoice);
+
             // ProcBases setparams
             var proc = htrav.Field("lstProc").GetValue<List<ProcBase>>();
             var mode = htrav.Field("mode").GetValue<int>();
@@ -239,6 +253,63 @@ namespace HS2_HCharaSwitcher
                 yield return 0;
                 yield return 0;
             }
+            
+            // Reload animation. The copy is unavoidable because there's an equals check for new animation
+            hSprite.ChangeStart = true;
+            hFlagCtrl.selectAnimationListInfo = Tools.CopyAnimationInfo(hFlagCtrl.nowAnimationInfo);
+
+            yield return 0;
+            
+            canSwitch = true;
+        }
+
+        private static IEnumerator ChangeCharacterM(ChaControl chara, string card, int id)
+        {
+            canSwitch = false;
+
+            var visible = chara.visibleAll;
+            
+            // card, outfit, reload
+            if (!chara.chaFile.LoadCharaFile(card, chara.sex))
+            {
+                canSwitch = true;
+                yield break;
+            }
+
+            chara.ChangeNowCoordinate();
+            chara.Reload();
+
+            if (id == 0)
+            {
+                chara.isPlayer = true;
+                hSceneManager.player = chara;
+            }
+
+            chara.visibleAll = visible;
+            
+            chara.LoadHitObject();
+            hScene.ctrlMaleCollisionCtrls[id].Init(chaFemales[0], chaMales[id].objHitHead, chaMales[id].objHitBody);
+            
+            yield return hScene.ctrlHitObjectMales[id].HitObjInit(0, chaMales[id].objBodyBone, chaMales[id]);
+            
+            hScene.ctrlLookAts[id].DankonInit(chaMales[id], chaFemales);
+
+            var yure = htrav.Field("ctrlYureMale").GetValue<YureCtrlMale[]>()[id];
+            
+            yure.Init();
+            yure.chaMale = chaMales[id];
+            yure.MaleID = id;
+
+            if (chaMales[id] != null && chaMales[id].objBodyBone != null)
+            {
+                hScene.ctrlEyeNeckMale[id].Init(chaMales[id], id);
+                hScene.ctrlEyeNeckMale[id].SetPartner(chaFemales[id].objBodyBone, (chaFemales[1] != null) ? chaFemales[1].objBodyBone : null, (chaMales[id == 0 ? 1 : 0] != null) ? chaMales[id == 0 ? 1 : 0].objBodyBone : null);
+            }  
+            
+            hSprite.Setting(chaFemales, chaMales);
+            Tools.SetupChaChoice(hSprite.charaChoice);
+            
+            yield return 0;
             
             // Reload animation. The copy is unavoidable because there's an equals check for new animation
             hSprite.ChangeStart = true;
