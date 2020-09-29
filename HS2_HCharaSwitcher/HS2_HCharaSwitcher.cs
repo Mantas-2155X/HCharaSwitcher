@@ -75,7 +75,7 @@ namespace HS2_HCharaSwitcher
             if (!canSwitch || !ProcBase.endInit || htrav.Field("nowChangeAnim").GetValue<bool>() || hFlagCtrl.nowOrgasm)
                 yield break;
             
-            if (swapFemales && chaFemales[0] != null && chaFemales[1] != null)
+            if (swapFemales && chaFemales[0] != null && chaFemales[1] != null && chaFemales[0].visibleAll && chaFemales[1].visibleAll)
             {
                 var firstCard = chaFemales[0].chaFile.charaFileName;
                 var secondCard = chaFemales[1].chaFile.charaFileName;
@@ -83,7 +83,7 @@ namespace HS2_HCharaSwitcher
                 yield return ChangeCharacterF(chaFemales[0], secondCard, 0);
                 yield return ChangeCharacterF(chaFemales[1], firstCard, 1);
             }
-            else if (!swapFemales && chaMales[0] != null && chaMales[1] != null)
+            else if (!swapFemales && chaMales[0] != null && chaMales[1] != null && chaMales[0].visibleAll && chaMales[1].visibleAll)
             {
                 var firstCard = chaMales[0].chaFile.charaFileName;
                 var secondCard = chaMales[1].chaFile.charaFileName;
@@ -286,16 +286,16 @@ namespace HS2_HCharaSwitcher
             }
 
             chara.visibleAll = visible;
-            
+
             chara.LoadHitObject();
             hScene.ctrlMaleCollisionCtrls[id].Init(chaFemales[0], chaMales[id].objHitHead, chaMales[id].objHitBody);
-            
+
             yield return hScene.ctrlHitObjectMales[id].HitObjInit(0, chaMales[id].objBodyBone, chaMales[id]);
-            
+
             hScene.ctrlLookAts[id].DankonInit(chaMales[id], chaFemales);
 
             var yure = htrav.Field("ctrlYureMale").GetValue<YureCtrlMale[]>()[id];
-            
+
             yure.Init();
             yure.chaMale = chaMales[id];
             yure.MaleID = id;
@@ -303,12 +303,12 @@ namespace HS2_HCharaSwitcher
             if (chaMales[id] != null && chaMales[id].objBodyBone != null)
             {
                 hScene.ctrlEyeNeckMale[id].Init(chaMales[id], id);
-                hScene.ctrlEyeNeckMale[id].SetPartner(chaFemales[id].objBodyBone, (chaFemales[1] != null) ? chaFemales[1].objBodyBone : null, (chaMales[id == 0 ? 1 : 0] != null) ? chaMales[id == 0 ? 1 : 0].objBodyBone : null);
+                hScene.ctrlEyeNeckMale[id].SetPartner(chaFemales[0].objBodyBone, (chaFemales[1] != null) ? chaFemales[1].objBodyBone : null, (chaMales[id == 0 ? 1 : 0] != null) ? chaMales[id == 0 ? 1 : 0].objBodyBone : null);
             }  
             
             hSprite.Setting(chaFemales, chaMales);
             Tools.SetupChaChoice(hSprite.charaChoice);
-            
+
             yield return 0;
             
             // Reload animation. The copy is unavoidable because there's an equals check for new animation

@@ -1,3 +1,5 @@
+using System.Collections.Generic;
+using System.Linq;
 using AIChara;
 using HarmonyLib;
 using Manager;
@@ -21,6 +23,8 @@ namespace HS2_HCharaSwitcher
             
             HS2_HCharaSwitcher.htrav = Traverse.Create(HS2_HCharaSwitcher.hScene);
 
+            Tools.isSelectedFemale = true;
+            
             Tools.CreateUI();
         }
         
@@ -36,10 +40,15 @@ namespace HS2_HCharaSwitcher
         [HarmonyPostfix, HarmonyPatch(typeof(HSceneSprite), "ClothPanelClose")]
         public static void HSceneSprite_ClothPanelClose_Patch() => Tools.TogglePanel(false);
         
-        public static void HSceneSpriteChaChoice_Init_ChangeSelection(int val)
+        public static void HSceneSpriteChaChoice_Init_ChangeSelection(HSceneSpriteChaChoice __instance, int val)
         {
             var oldIsSelectedFemale = Tools.isSelectedFemale;
-            Tools.isSelectedFemale = val < 2;
+
+            var list = new List<ChaControl>();
+            list.AddRange(from chaControl in __instance.Females where chaControl != null && chaControl.fileParam != null select chaControl);
+            list.AddRange(from chaControl in __instance.Males where chaControl != null && chaControl.fileParam != null select chaControl);
+
+            Tools.isSelectedFemale = list[val].sex == 1;
             
             if(oldIsSelectedFemale != Tools.isSelectedFemale)
             {
