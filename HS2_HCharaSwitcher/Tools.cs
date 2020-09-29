@@ -216,6 +216,8 @@ namespace HS2_HCharaSwitcher
 
             for (var i = 0; i < dropdown.options.Count; i++)
                 dropdown.options[i].text = list[i];
+            
+            dropdown.RefreshShownValue();
         }
         
         public static void SetupSwitch()
