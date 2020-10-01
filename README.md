@@ -6,7 +6,8 @@ This plugin allows you to change character cards during H scene.
 
 **Features:**  
 * Integrated into the game UI  
-* Change cards for female H members  
+* Change cards for male, female H members  
+* Ability to swap cards of characters in 3P HScenes  
 * Changes personality, voice, BGM, ABMX, Overlays, other data according to the character card  
 * Preserve weakness state checkbox  
 
