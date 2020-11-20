@@ -25,7 +25,7 @@ namespace HS2_HCharaSwitcher
         
         public static void CreateUI()
         {
-            var UI = GameObject.Find("UI");
+            var UI = GameObject.Find(Application.productName == "HoneySelect2VR" ? "UI/Panel" : "UI");
             if (UI == null)
                 return;
             

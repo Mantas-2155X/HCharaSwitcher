@@ -12,10 +12,11 @@ using Illusion.Game;
 namespace HS2_HCharaSwitcher
 {
     [BepInProcess("HoneySelect2")]
+    [BepInProcess("HoneySelect2VR")]
     [BepInPlugin(nameof(HS2_HCharaSwitcher), nameof(HS2_HCharaSwitcher), VERSION)]
     public class HS2_HCharaSwitcher : BaseUnityPlugin
     {
-        public const string VERSION = "1.2.0";
+        public const string VERSION = "1.2.1";
 
         public static HS2_HCharaSwitcher instance;
 
