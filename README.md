@@ -10,6 +10,7 @@ This plugin allows you to change character cards during H scene.
 * Ability to swap cards of characters in 3P HScenes  
 * Changes personality, voice, BGM, ABMX, Overlays, other data according to the character card  
 * Preserve weakness state checkbox  
+* VR Compatibility
 
 **Usage:**  
 * Open the coordinate card UI and a new window which allows you to change cards should open
